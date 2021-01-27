@@ -1,0 +1,1 @@
+A basic directory with marked (seen before), unmarked (new) directories as well as files that should not be copied.
