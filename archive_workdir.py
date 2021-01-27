@@ -20,6 +20,9 @@ RSYNC_FLAGS = ["-a", "--delete"]
 
 
 def dir_path(path):
+    """
+    Argparse argument type for directories.
+    """
     if os.path.isdir(path):
         return path
     else:  # pragma: no cover
