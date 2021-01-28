@@ -85,13 +85,12 @@ def read_dir_id(path):
     This is the contents of path/.awid
     """
     id_path = os.path.join(path, WORK_DIR_ID_FILENAME)
-    if not os.path.isfile(id_path):
-        return None
+    if os.path.isfile(id_path):
+        with open(id_path, mode="r") as f:
+            dir_id = f.readline().strip()
+            return dir_id if dir_id else None
 
-    with open(id_path, mode="r") as f:
-        dir_id = f.readline().strip()
-
-    return dir_id if dir_id else None
+    return None
 
 
 def mark_dir(args, path1, path2=None):
