@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Copy the subdirectories of a working directory to an archive directory. Subsequent runs re-sync the copies.
 
@@ -43,8 +44,8 @@ class ArgumentParser(argparse.ArgumentParser):
 def parse_args(args=None):
     parser = ArgumentParser(description=__doc__)
 
-    parser.add_argument('work_dir', type=dir_path)
-    parser.add_argument('archive_dir', type=dir_path)
+    parser.add_argument("work_dir", type=dir_path)
+    parser.add_argument("archive_dir", type=dir_path)
 
     parser.add_argument("-d", "--dry-run", action="store_true", default=False,
                         help="Do not make any changes.")
@@ -132,7 +133,7 @@ def main(args=None):
     :param args: Command-line arguments. If None then default to system args.
     """
     args = parse_args(args)
-    logging.basicConfig(stream=sys.stdout, format='%(message)s', level=logging.DEBUG if args.verbose else logging.INFO)
+    logging.basicConfig(stream=sys.stdout, format="%(message)s", level=logging.DEBUG if args.verbose else logging.INFO)
 
     dry_run = args.dry_run
     work_base_path = Path(args.work_dir)

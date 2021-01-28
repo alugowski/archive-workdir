@@ -112,5 +112,5 @@ class ArchiveWorkDirTestCase(unittest.TestCase):
             self.assertIdenticalDirs(dirs.archive_path, dirs.get_expected_dir())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()  # pragma: no cover
