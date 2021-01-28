@@ -53,6 +53,10 @@ def parse_args(args=None):
                         help="If any directories are skipped then report that to stderr and return an error code. "
                              "Useful to warn you of problems when run in a cron job.")
 
+    parser.add_argument("-r", "--rsync-arg", action="append", type=str, default=[],
+                        help="Argument to forward to rsync. Can be specified multiple times. "
+                             "If the argument begins with a dash, use this format: --rsync-arg=\"--no-p\"")
+
     parser.add_argument("-v", "--verbose", action="store_true", default=False,
                         help="Extra logging.")
 
@@ -116,7 +120,9 @@ def rsync_dir(args, work_path: Path, archive_path: Path):
         command.extend(["--dry-run"])
     if args.verbose:
         command.extend(["-v"])
+    command.extend(args.rsync_arg)
     command.extend([str(work_path) + "/", str(archive_path)])
+
     logger.info(" ".join(f"'{w}'" for w in command))
     subprocess.run(command)
 
