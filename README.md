@@ -1,7 +1,13 @@
+[![](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
+[![Build Status](https://travis-ci.com/alugowski/archive-workdir.svg?branch=main)](https://travis-ci.com/alugowski/archive-workdir)
+[![codecov](https://codecov.io/gh/alugowski/archive-workdir/branch/main/graph/badge.svg?token=u3y0dvhZkp)](https://codecov.io/gh/alugowski/archive-workdir)
+
 Copy the subdirectories of a working directory to an archive directory. Subsequent runs re-sync the copies.
 
 The archive is expected to be a superset of the working directory, where the working directory is the "owner"
 of the subdirectories it does have.
+
+Requires Python 3.6+
 
 ### Pseudocode
 
