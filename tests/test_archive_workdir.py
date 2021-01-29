@@ -1,17 +1,17 @@
 from filecmp import dircmp
 import unittest
-import sys
-from pathlib import Path
 
-sys.path.insert(0, Path(__file__).parent.parent)
-import archive_workdir
+from archive_workdir import archive_workdir
 
-from util import recursive_dircmp, TestDirectories
+from .util import recursive_dircmp, TempTestDirectories
 
 
 class ArchiveWorkDirTestCase(unittest.TestCase):
     @staticmethod
     def dumpMismatch(cmp, side=""):  # pragma: no cover
+        """
+        Verbose dump of directories for easier debugging.
+        """
         import os
         print(f"MISMATCH {side}")
         print("------------ left:")
@@ -35,12 +35,12 @@ class ArchiveWorkDirTestCase(unittest.TestCase):
             self.assertFalse(cmp.funny_files)
 
     def setUp(self):
-        TestDirectories.setup_paths()
+        TempTestDirectories.setup_paths()
 
     def test_dry_run(self):
-        for work_path in TestDirectories.all_work_paths():
-            for archive_path in TestDirectories.all_archive_paths():
-                with TestDirectories(work_path=work_path, archive_path=archive_path) as dirs, \
+        for work_path in TempTestDirectories.all_work_paths():
+            for archive_path in TempTestDirectories.all_archive_paths():
+                with TempTestDirectories(work_path=work_path, archive_path=archive_path) as dirs, \
                         self.subTest(**dirs.describe_subtest()):
                     archive_workdir.main(args=["--dry-run", "-v", str(dirs.work_path), str(dirs.archive_path)])
 
@@ -51,9 +51,9 @@ class ArchiveWorkDirTestCase(unittest.TestCase):
                     self.assertIdenticalDirs(dirs.orig_archive_path, dirs.archive_path)
 
     def test_sync(self):
-        for work_path in TestDirectories.all_work_paths():
-            for archive_path in TestDirectories.all_archive_paths():
-                with TestDirectories(work_path=work_path, archive_path=archive_path) as dirs:
+        for work_path in TempTestDirectories.all_work_paths():
+            for archive_path in TempTestDirectories.all_archive_paths():
+                with TempTestDirectories(work_path=work_path, archive_path=archive_path) as dirs:
                     expected_dir = dirs.get_expected_dir()
 
                     if expected_dir is None:
@@ -66,45 +66,45 @@ class ArchiveWorkDirTestCase(unittest.TestCase):
                         self.assertIdenticalDirs(dirs.archive_path, expected_dir)
 
     def test_rename_only(self):
-        with TestDirectories(work_path=TestDirectories.get_work_path("basic"),
-                             archive_path=TestDirectories.get_archive_path("rename_marked")) as dirs:
+        with TempTestDirectories(work_path=TempTestDirectories.get_work_path("basic"),
+                                 archive_path=TempTestDirectories.get_archive_path("rename_marked")) as dirs:
             archive_workdir.main(args=["-v", "--test-no-rsync", str(dirs.work_path), str(dirs.archive_path)])
 
             self.assertIdenticalDirs(dirs.archive_path, dirs.get_expected_dir())
 
     def test_mark_all(self):
         # ensure no changes when run normally
-        with TestDirectories(work_path=TestDirectories.get_work_path("basic"),
-                             archive_path=TestDirectories.get_archive_path("existing_unmarked")) as dirs:
+        with TempTestDirectories(work_path=TempTestDirectories.get_work_path("basic"),
+                                 archive_path=TempTestDirectories.get_archive_path("existing_unmarked")) as dirs:
             archive_workdir.main(args=["-v", str(dirs.work_path), str(dirs.archive_path)])
 
-            expected_dir = TestDirectories.get_archive_path("existing_unmarked")
+            expected_dir = TempTestDirectories.get_archive_path("existing_unmarked")
             self.assertIdenticalDirs(dirs.archive_path, expected_dir)
 
         # run again with --mark-all which should overwrite the unmarked archive directory
-        with TestDirectories(work_path=TestDirectories.get_work_path("basic"),
-                             archive_path=TestDirectories.get_archive_path("existing_unmarked")) as dirs:
+        with TempTestDirectories(work_path=TempTestDirectories.get_work_path("basic"),
+                                 archive_path=TempTestDirectories.get_archive_path("existing_unmarked")) as dirs:
             archive_workdir.main(args=["-v", "--mark-new", str(dirs.work_path), str(dirs.archive_path)])
 
-            expected_dir = TestDirectories.get_expected_archive_path("basic")
+            expected_dir = TempTestDirectories.get_expected_archive_path("basic")
             self.assertIdenticalDirs(dirs.archive_path, expected_dir)
 
     def test_mark_single(self):
-        with TestDirectories(work_path=TestDirectories.get_work_path("basic"),
-                             archive_path=TestDirectories.get_archive_path("existing_unmarked")) as dirs:
+        with TempTestDirectories(work_path=TempTestDirectories.get_work_path("basic"),
+                                 archive_path=TempTestDirectories.get_archive_path("existing_unmarked")) as dirs:
             # mark the unmarked workdir
             archive_workdir.main(args=["-v", "--mark", "unmarked", str(dirs.work_path), str(dirs.archive_path)])
 
             # run normally
             archive_workdir.main(args=["-v", str(dirs.work_path), str(dirs.archive_path)])
 
-            expected_dir = TestDirectories.get_expected_archive_path("basic")
+            expected_dir = TempTestDirectories.get_expected_archive_path("basic")
             self.assertIdenticalDirs(dirs.archive_path, expected_dir)
 
     def test_report_skipped(self):
         # report
-        with TestDirectories(work_path=TestDirectories.get_work_path("basic"),
-                             archive_path=TestDirectories.get_archive_path("marked_conflict")) as dirs:
+        with TempTestDirectories(work_path=TempTestDirectories.get_work_path("basic"),
+                                 archive_path=TempTestDirectories.get_archive_path("marked_conflict")) as dirs:
 
             ret = archive_workdir.main(args=["-v", "--report-skipped", str(dirs.work_path), str(dirs.archive_path)])
 

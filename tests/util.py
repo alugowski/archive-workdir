@@ -8,7 +8,12 @@ from pathlib import Path
 resources_root = Path(__file__).parent / "resources"
 
 
-class TestDirectories:
+class TempTestDirectories:
+    """
+    Manage providing workdir, archive, and post-run expected archive directories.
+
+    Each directory used for testing is a temporary copy of a template. Tests are free to modify at will.
+    """
     def __init__(self, work_path, archive_path):
         self.orig_work_path = work_path
         self.orig_archive_path = archive_path
