@@ -54,13 +54,6 @@ def parse_args(args=None):
                         help="If any directories are skipped then report that to stderr and return an error code. "
                              "Useful to warn you of problems when run in a cron job.")
 
-    parser.add_argument("-r", "--rsync-arg", action="append", type=str, default=[],
-                        help="Argument to forward to rsync. Can be specified multiple times. "
-                             "If the argument begins with a dash, use this format: --rsync-arg=\"--no-p\"")
-
-    parser.add_argument("-v", "--verbose", action="store_true", default=False,
-                        help="Extra logging.")
-
     parser.add_argument("-m", "--mark", type=str, metavar="SUBDIR_NAME",
                         help="Mark an unmarked directory that exists in both work dir and archive dir and exit. "
                              "This directory will then get synced on a subsequent run."
@@ -70,6 +63,17 @@ def parse_args(args=None):
     parser.add_argument("-n", "--mark-new", action="store_true", default=False,
                         help="Automatically mark (and sync) all unmarked sub directories that exist "
                              "in both work dir and archive dir. Use with caution.")
+
+    parser.add_argument("-r", "--rename", action="store_true", default=False,
+                        help="Attempt to detect files that have been renamed and rename the archive's copy. "
+                             "Cheaper than rsync's copy/delete.")
+
+    parser.add_argument("-v", "--verbose", action="store_true", default=False,
+                        help="Extra logging.")
+
+    parser.add_argument("--rsync-arg", action="append", type=str, default=[],
+                        help="Argument to forward to rsync. Can be specified multiple times. "
+                             "If the argument begins with a dash, use this format: --rsync-arg=\"--no-p\"")
 
     # Do not run rsync. For testing rename functionality.
     parser.add_argument("--test-no-rsync", action="store_true", default=False,
@@ -109,6 +113,58 @@ def mark_dir(args, path1, path2=None):
                 f.write(dir_id)
 
     return dir_id
+
+
+def attempt_renames(args, work_path: Path, archive_path: Path):
+    """
+    Attempt to find files that have been renamed, then rename them in the archive dir.
+
+    This method does not guarantee anything, the assumption is that an rsync will follow.
+
+    The utility of this is that a filesystem rename is cheaper than a copy/delete that rsync would do. This is
+    especially true if the filesystem uses snapshot-based replication, where a rename is significantly cheaper.
+    """
+    if not archive_path.is_dir():
+        return
+
+    # recurse
+    for sub in filter(lambda p: p.is_dir(), work_path.iterdir()):
+        arch_sub = archive_path / sub.name
+        if arch_sub.is_dir():
+            attempt_renames(args, sub, arch_sub)
+
+    work_fnames = set(f.name for f in filter(lambda p: p.is_file(), work_path.iterdir()))
+    arch_fnames = set(f.name for f in filter(lambda p: p.is_file(), archive_path.iterdir()))
+
+    work_candidates = [work_path / c for c in (work_fnames - arch_fnames)]
+    arch_candidates = [archive_path / c for c in (arch_fnames - work_fnames)]
+
+    if not work_candidates or not arch_candidates:
+        return
+
+    def get_stat_id(p: Path):
+        """
+        Get an ID based on cheap to get metadata.
+
+        Size is a great discriminator for the use cases we're targeting. Does not need to be perfect.
+        """
+        return p.stat().st_size
+
+    work_to_id = {p: get_stat_id(p) for p in work_candidates}
+    id_to_arch = {get_stat_id(p): p for p in arch_candidates}
+
+    for work, fid in work_to_id.items():
+        arch = id_to_arch.get(fid, None)
+        if not arch:
+            # no file in the archive directory matches this work directory file
+            continue
+
+        # rename
+        src = arch
+        dst = src.parent / work.name
+        logger.debug(f"{args.dry_run_prefix}Renaming '{src}' to '{dst.name}'")
+        if not args.dry_run:
+            src.rename(dst)
 
 
 def rsync_dir(args, work_path: Path, archive_path: Path):
@@ -211,13 +267,16 @@ def main(args=None):
             skipped.append(dict(args=args, work_path=work_dir, action=action))
     logger.info(f"\n")
 
-    # skip rsync for some tests
-    if args.test_no_rsync:
-        logger.info("Skipping rsync")
-        return
-
     # run rsync
     for rsync_args in rsync_todo:
+        if args.rename:
+            attempt_renames(**rsync_args)
+
+        if args.test_no_rsync:
+            # skip rsync for some tests
+            logger.info("Skipping rsync")
+            continue
+
         rsync_dir(**rsync_args)
 
     # report errors

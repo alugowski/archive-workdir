@@ -38,6 +38,7 @@ class ArchiveWorkDirTestCase(unittest.TestCase):
         TempTestDirectories.setup_paths()
 
     def test_dry_run(self):
+        # Ensure dry-run doesn't make any changes.
         for work_path in TempTestDirectories.all_work_paths():
             for archive_path in TempTestDirectories.all_archive_paths():
                 with TempTestDirectories(work_path=work_path, archive_path=archive_path) as dirs, \
@@ -51,6 +52,7 @@ class ArchiveWorkDirTestCase(unittest.TestCase):
                     self.assertIdenticalDirs(dirs.orig_archive_path, dirs.archive_path)
 
     def test_sync(self):
+        # Test sync.
         for work_path in TempTestDirectories.all_work_paths():
             for archive_path in TempTestDirectories.all_archive_paths():
                 with TempTestDirectories(work_path=work_path, archive_path=archive_path) as dirs:
@@ -61,18 +63,32 @@ class ArchiveWorkDirTestCase(unittest.TestCase):
                         continue
 
                     with self.subTest(**dirs.describe_subtest()):
-                        archive_workdir.main(args=["-v", str(dirs.work_path), str(dirs.archive_path)])
+                        archive_workdir.main(args=["-v", "-r", str(dirs.work_path), str(dirs.archive_path)])
 
                         self.assertIdenticalDirs(dirs.archive_path, expected_dir)
 
     def test_rename_only(self):
+        # Ensure archive directory is renamed properly before the call to rsync.
         with TempTestDirectories(work_path=TempTestDirectories.get_work_path("basic"),
                                  archive_path=TempTestDirectories.get_archive_path("rename_marked")) as dirs:
             archive_workdir.main(args=["-v", "--test-no-rsync", str(dirs.work_path), str(dirs.archive_path)])
 
             self.assertIdenticalDirs(dirs.archive_path, dirs.get_expected_dir())
 
+    def test_attempt_rename(self):
+        # Test --rename switch that renames archive files if work files have been renamed, before rsync.
+        with TempTestDirectories(work_path=TempTestDirectories.get_work_path("basic"),
+                                 archive_path=TempTestDirectories.get_archive_path("rename_marked_with_children"))\
+                as dirs:
+            archive_workdir.main(args=["-v", "--rename", "--test-no-rsync",
+                                       str(dirs.work_path), str(dirs.archive_path)])
+
+            expected_dir = TempTestDirectories.get_expected_archive_path("basic_to_rename_with_children_no_rsync")
+            self.assertIdenticalDirs(dirs.archive_path, expected_dir)
+
     def test_mark_all(self):
+        # Test automatic marking of new directories.
+
         # ensure no changes when run normally
         with TempTestDirectories(work_path=TempTestDirectories.get_work_path("basic"),
                                  archive_path=TempTestDirectories.get_archive_path("existing_unmarked")) as dirs:
@@ -90,6 +106,7 @@ class ArchiveWorkDirTestCase(unittest.TestCase):
             self.assertIdenticalDirs(dirs.archive_path, expected_dir)
 
     def test_mark_single(self):
+        # Test forced manual marking with --mark
         with TempTestDirectories(work_path=TempTestDirectories.get_work_path("basic"),
                                  archive_path=TempTestDirectories.get_archive_path("existing_unmarked")) as dirs:
             # mark the unmarked workdir
@@ -102,7 +119,7 @@ class ArchiveWorkDirTestCase(unittest.TestCase):
             self.assertIdenticalDirs(dirs.archive_path, expected_dir)
 
     def test_report_skipped(self):
-        # report
+        # Test --report-skipped switch report generation for skipped directories.
         with TempTestDirectories(work_path=TempTestDirectories.get_work_path("basic"),
                                  archive_path=TempTestDirectories.get_archive_path("marked_conflict")) as dirs:
 

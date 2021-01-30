@@ -25,10 +25,11 @@ directory in the workdir to be renamed.
 For this use case we manually run the first sync to ensure everything works as expected, then use this in a cron job:
 
 ```
-python archive_workdir -n -e WORKDIR ARCHIVEDIR
+python archive_workdir -n -e -r WORKDIR ARCHIVEDIR
 ```
  * `-n` will auto-sync any newly-added directories (but not if there is an old already-marked dir in the archive)
  * `-e` will print any un-synced directories to stderr so your cron monitor can alert you.
+ * `-r` will attempt to detect files that have been renamed and rename the archive's copy. Cheaper than rsync's copy/delete in some cases, such as with a replicated filesystem (i.e. ZFS replication).
 
 ### Driving use case
 
